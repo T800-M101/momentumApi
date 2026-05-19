@@ -1,15 +1,26 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ValidationPipe,
+  UsePipes,
+} from '@nestjs/common';
 import { JournalService } from './journal.service';
-import { CreateJournalDto } from './dto/create-journal.dto';
-import { UpdateJournalDto } from './dto/update-journal.dto';
+import { UpdateJournalDto } from './dto/update-entry.dto';
+import { CreateEntryDto } from './dto/create-entry.dto';
 
 @Controller('journal')
 export class JournalController {
   constructor(private readonly journalService: JournalService) {}
 
   @Post()
-  create(@Body() createJournalDto: CreateJournalDto) {
-    return this.journalService.create(createJournalDto);
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  async createEntry(@Body() createEntryDto: CreateEntryDto) {
+    return this.journalService.create(createEntryDto);
   }
 
   @Get()
