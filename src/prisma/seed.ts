@@ -3,15 +3,64 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clear existing data to avoid duplicates during development
+  console.log('--- Cleaning database ---');
   await prisma.image.deleteMany();
   await prisma.entry.deleteMany();
+  await prisma.tag.deleteMany();
+  await prisma.mood.deleteMany();
+
+  console.log('--- Creating a catalog of moods ---');
+  const moodsData = [
+    { emoji: '😀', label: 'Happy' },
+    { emoji: '😌', label: 'Calm' },
+    { emoji: '😴', label: 'Tired' },
+    { emoji: '😔', label: 'Sad' },
+    { emoji: '🤩', label: 'Excited' },
+    { emoji: '🥲', label: 'Emotional' },
+    { emoji: '👨‍💻', label: 'Focused' },
+    { emoji: '🧠', label: 'Analytical' },
+    { emoji: '🤯', label: 'Mind-blown' },
+    { emoji: '😤', label: 'Determined' },
+    { emoji: '💪', label: 'Strong' },
+    { emoji: '🏃‍♂️', label: 'Active' },
+    { emoji: '🍃', label: 'Refreshed' },
+    { emoji: '🥵', label: 'Exhausted' },
+    { emoji: '🤔', label: 'Puzzled' },
+    { emoji: '🫠', label: 'Overwhelmed' },
+    { emoji: '😎', label: 'Confident' },
+    { emoji: '🧉', label: 'Chilling' },
+    { emoji: '🚀', label: 'Productive' }, 
+    { emoji: '😐', label: 'Neutral' },
+  ];
+
+  for (const mood of moodsData) {
+    await prisma.mood.upsert({
+      where: { label: mood.label },
+      update: {},
+      create: mood,
+    });
+  }
+
+  // We created the moods and saved them so we could reference them by name later.
+  const moodMap: Record<string, number> = {};
+  
+  for (const m of moodsData) {
+    const createdMood = await prisma.mood.upsert({
+      where: { label: m.label },
+      update: {},
+      create: m,
+    });
+    moodMap[m.label.toLowerCase()] = createdMood.id;
+  }
+
+  console.log('--- Creating journal entries ---');
 
   const entries = [
   {
     title: 'Morning Hike at Chipinque',
-    mood: 'happy',
-    date: 'Saturday, Jan 16',
+    moodLabel: 'happy',
+    emoji:'⛰️',
+    date: new Date('2026-05-17T10:00:00Z'),
     content: `
       The weather in Monterrey today was absolutely spectacular, perfect for a morning trek.
       I decided to hit the trail early to reach the lookout point before the intense midday heat kicked in.
@@ -24,12 +73,20 @@ async function main() {
       On the way down, I ran into a few other regulars who shared tips on some of the less-traveled paths.
       I'm definitely feeling that 'productive' soreness in my legs now; it was a morning well spent.
     `,
-    images: []
+    images: [],
+    tags: {
+      connectOrCreate: [
+        { where: { name: 'hiking' }, create: { name: 'hiking' } },
+        { where: { name: 'monterrey' }, create: { name: 'monterrey' } },
+        { where: { name: 'fitness' }, create: { name: 'fitness' } }
+      ]
+    }
   },
   {
     title: 'Refactoring with Angular Signals',
-    mood: 'productive',
-    date: 'Monday, May 18',
+    moodLabel: 'productive',
+    emoji: '🚀',
+    date: new Date('2026-05-18T09:30:00Z'),
     content: `
       Today I finally finished migrating the traditional component inputs over to the new Angular Signals API.
       The change in performance is palpable, especially when rendering the long list of journal entries.
@@ -42,12 +99,20 @@ async function main() {
       The next step will be implementing a global state manager using signals for the user's profile data.
       Overall, the refactor was a success and the boilerplate code has been significantly reduced.
     `,
-    images: []
+    images: [],
+    tags: {
+      connectOrCreate: [
+        { where: { name: 'angular' }, create: { name: 'angular' } },
+        { where: { name: 'frontend' }, create: { name: 'frontend' } },
+        { where: { name: 'signals' }, create: { name: 'signals' } }
+      ]
+    }
   },
   {
     title: 'Docker and Postgres Configuration',
-    mood: 'neutral',
-    date: 'Tuesday, May 19',
+    moodLabel: 'neutral',
+    emoji: '😐',
+    date: new Date('2026-05-19T06:43:00Z'),
     content: `
       I spent most of the afternoon wrestling with NestJS dependency injection and the PrismaService setup.
       The P1003 error was a bit of a headache, but it turned out to be a simple database naming mismatch in the .env file.
@@ -60,21 +125,31 @@ async function main() {
       I still need to look into SSL certificate configurations for the eventual production deployment.
       It was a day full of minor hurdles, but the infrastructure for the momentum-api is now rock solid.
     `,
-    images: []
+    images: [],
+    tags: {
+      connectOrCreate: [
+        { where: { name: 'docker' }, create: { name: 'docker' } },
+        { where: { name: 'database' }, create: { name: 'database' } },
+        { where: { name: 'diy' }, create: { name: 'diy' } }
+      ]
+    }
+    
   }
 ];
 
-  for (const entry of entries) {
-    const { images, ...entryData } = entry;
-    await prisma.entry.create({
-      data: {
-        ...entryData,
-        images: {
-          create: images
-        }
-      }
-    });
-  }
+ for (const entry of entries) {
+  const targetMoodId = moodMap[entry.moodLabel] || moodMap['neutral'];
+
+  await prisma.entry.create({
+    data: {
+      title: entry.title,
+      content: entry.content,
+      date: entry.date,
+      moodId: targetMoodId, 
+      tags: entry.tags 
+    }
+  });
+}
 
   console.log('Seed data created successfully!');
 }

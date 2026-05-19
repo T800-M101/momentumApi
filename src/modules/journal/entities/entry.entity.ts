@@ -1,4 +1,4 @@
-import { Entry, Image } from '@prisma/client';
+import { Entry, Image, Tag } from '@prisma/client';
 
 
 
@@ -6,12 +6,12 @@ export class EntryEntity implements Entry {
   id: number;
   title: string;
   mood: string;
-  date: string;
+  emoji: string;
+  date: Date;
+  moodId: number;
   content: string;
-  time: string | null;
   createdAt: Date;
   updatedAt: Date;
-
-  // You can add the relation here as well
-  images?: Image[];
+  tags: Tag[];
+  images: Image[];
 }

@@ -10,13 +10,24 @@ datasource db {
 model Entry {
   id        Int      @id @default(autoincrement())
   title     String
-  mood      String   
-  date      String   
   content   String   @db.Text
-  time      String?  
+  date      DateTime
+  
+  // Relación con Mood
+  moodId    Int
+  mood      Mood     @relation(fields: [moodId], references: [id])
+
+  tags      Tag[]    @relation("EntryToTag")
   images    Image[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Mood {
+  id      Int     @id @default(autoincrement())
+  label   String  @unique // Ej: "Happy"
+  emoji   String          // Ej: "😀"
+  entries Entry[]         // Una relación inversa para saber qué notas tienen este mood
 }
 
 model Image {
@@ -25,4 +36,10 @@ model Image {
   alt     String?
   entryId Int
   entry   Entry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  entries Entry[] @relation("EntryToTag")
 }

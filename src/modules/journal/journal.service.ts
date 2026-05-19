@@ -18,6 +18,8 @@ export class JournalService {
     return this.prisma.entry.findMany({
       include: {
         images: true,
+        tags:true,
+        mood: true
       },
       orderBy: {
         createdAt: 'desc',
