@@ -9,6 +9,8 @@ import {
   UsePipes,
   ParseIntPipe,
   Put,
+  BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { JournalService } from './journal.service';
 import { CreateEntryDto } from './dto/create-entry.dto';
@@ -24,9 +26,25 @@ export class JournalController {
   }
 
   @Get()
-  findAll() {
+  async findAll(@Query('date') date?: string, @Query('search') search?: string) {
+    if (date) {
+      // We quickly validate that the format is a valid YYYY-MM-DD string before hitting the database
+      const regexFecha = /^\d{4}-\d{2}-\d{2}$/;
+      if (!regexFecha.test(date)) {
+        throw new BadRequestException('El formato de fecha debe ser estrictamente YYYY-MM-DD');
+      }
+
+      return this.journalService.findByDate(date);
+    }
+
+    if (search && search.trim() !== '') {
+      return this.journalService.findByKeyword(search);
+    }
+
+    // If the query param '?date=' is not present, respond with the default logic (30 entries)
     return this.journalService.findAll();
   }
+
 
   @Get(':id')
   async getEntryById(@Param('id', ParseIntPipe) id: number) {

@@ -1,0 +1,26 @@
+export const STOP_WORDS = new Set([
+  // English
+  'the',
+  'and',
+  'for',
+  'with',
+  'you',
+  'that',
+  'this',
+  'this',
+  'are',
+  'but',
+  'not',
+  // Spanish
+  'los',
+  'las',
+  'del',
+  'con',
+  'una',
+  'uno',
+  'por',
+  'para',
+  'que',
+  'sus',
+  'como',
+]);
