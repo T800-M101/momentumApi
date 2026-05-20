@@ -3,14 +3,14 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   ValidationPipe,
   UsePipes,
+  ParseIntPipe,
+  Put,
 } from '@nestjs/common';
 import { JournalService } from './journal.service';
-import { UpdateJournalDto } from './dto/update-entry.dto';
 import { CreateEntryDto } from './dto/create-entry.dto';
 
 @Controller('journal')
@@ -29,13 +29,17 @@ export class JournalController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.journalService.findOne(+id);
+  async getEntryById(@Param('id', ParseIntPipe) id: number) {
+    return this.journalService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateJournalDto: UpdateJournalDto) {
-    return this.journalService.update(+id, updateJournalDto);
+  @Put(':id')
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+  async updateEntry(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateEntryDto: CreateEntryDto,
+  ) {
+    return this.journalService.update(id, updateEntryDto);
   }
 
   @Delete(':id')
