@@ -7,7 +7,6 @@ import {
   Delete,
   ValidationPipe,
   UsePipes,
-  ParseIntPipe,
   Put,
   BadRequestException,
   Query,
@@ -47,14 +46,14 @@ export class JournalController {
 
 
   @Get(':id')
-  async getEntryById(@Param('id', ParseIntPipe) id: number) {
+  async getEntryById(@Param('id') id: string) {
     return this.journalService.findOne(id);
   }
 
   @Put(':id')
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async updateEntry(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateEntryDto: CreateEntryDto,
   ) {
     return this.journalService.update(id, updateEntryDto);
@@ -62,6 +61,6 @@ export class JournalController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.journalService.remove(+id);
+    return this.journalService.remove(id);
   }
 }

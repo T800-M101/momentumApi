@@ -7,34 +7,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(uuid()) 
+  email        String   @unique            
+  username     String   @unique           
+  password     String   
+  
+  // Strategic field for yourrt.strategy.ts:
+  // Stores the hash of the active Refresh Token. Allows session revocation upon logout.
+  hashedRt     String?  
+
+  // Standard audit
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // One-to-Many Relation: A user has many entries in their journal.
+  entries      Entry[]
+
+  @@map("users") // Map the model to the "users" table in lowercase in Postgres
+}
+
+
+
 model Entry {
-  id        Int      @id @default(autoincrement())
+  id        String      @id @default(uuid())
   title     String
   content   String   @db.Text
   date      DateTime
   
-  // Relación con Mood
+  // Added Relation with User
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   moodId    Int
   mood      Mood     @relation(fields: [moodId], references: [id])
-
   tags      Tag[]    @relation("EntryToTag")
   images    Image[]
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Mood {
   id      Int     @id @default(autoincrement())
-  label   String  @unique // Ej: "Happy"
-  emoji   String          // Ej: "😀"
-  entries Entry[]         // Una relación inversa para saber qué notas tienen este mood
+  label   String  @unique 
+  emoji   String          
+  entries Entry[]        
 }
 
 model Image {
   id      Int     @id @default(autoincrement())
   url     String
   alt     String?
-  entryId Int
+  entryId String
   entry   Entry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
 }
 

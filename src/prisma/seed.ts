@@ -5,9 +5,12 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('--- Cleaning database ---');
   await prisma.image.deleteMany();
-  await prisma.entry.deleteMany();
+  await prisma.entry.deleteMany(); 
   await prisma.tag.deleteMany();
   await prisma.mood.deleteMany();
+  await prisma.user.deleteMany();
+
+  console.log('--- Database cleaned successfully ---');
 
   console.log('--- Creating a catalog of moods ---');
   const moodsData = [

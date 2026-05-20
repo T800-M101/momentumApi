@@ -59,7 +59,7 @@ export class JournalService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const entry = await this.prisma.entry.findUnique({
       where: { id },
       include: {
@@ -173,7 +173,7 @@ export class JournalService {
     });
   }
 
-  async update(id: number, updateEntryDto: CreateEntryDto) {
+  async update(id: string, updateEntryDto: CreateEntryDto) {
     const { title, content, moodId, date, tags } = updateEntryDto;
 
     await this.findOne(id);
@@ -212,7 +212,7 @@ export class JournalService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: string) {
     const entry = await this.prisma.entry.findUnique({
       where: { id },
     });
