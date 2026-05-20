@@ -3,14 +3,19 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 export const CurrentUser = createParamDecorator(
   (data: string | undefined, context: ExecutionContext) => {
     const request = context.switchToHttp().getRequest();
-    if (!data) return request.user;
-    return request.user[data];
+    const user = request.user;
+
+    if (data && user) {
+      return user[data];
+    }
+    return user;
   },
 );
 
 export const CurrentUserId = createParamDecorator(
-  (data: undefined, context: ExecutionContext): string => {
+  (data: unknown, context: ExecutionContext): string | null => {
     const request = context.switchToHttp().getRequest();
-    return request.user['sub']; // 'sub' is the ID of the user in the JWT token
+
+    return request.user?.sub ? request.user.sub : null;
   },
 );

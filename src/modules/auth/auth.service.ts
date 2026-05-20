@@ -18,35 +18,37 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto) {
-    // 1. Check if the email already exists
-    const userExists = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
 
-    if (userExists) {
-      throw new ConflictException('This email address is already in use');
-    }
-
-    // 2. Hash the password (10 rounds of salt is the standard)
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    // 3. Create user
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        password: hashedPassword,
-        username: dto.username,
-      },
-    });
-
-    // 4. Return the username without the password (using destructuring)
-    const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+async register(dto: RegisterDto) {
+  const emailExists = await this.prisma.user.findUnique({
+    where: { email: dto.email },
+  });
+  if (emailExists) {
+    throw new ConflictException('This email address is already in use.'); 
   }
 
+  const usernameExists = await this.prisma.user.findUnique({
+    where: { username: dto.username },
+  });
+  if (usernameExists) {
+    throw new ConflictException('This username is already taken.'); 
+  }
+
+  const hashedPassword = await bcrypt.hash(dto.password, 10);
+  const user = await this.prisma.user.create({
+    data: {
+      email: dto.email,
+      password: hashedPassword,
+      username: dto.username,
+    },
+  });
+
+  const { password: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+}
+
   async login(dto: LoginDto) {
-    // 🚀 Look for a user where the input matches either the email OR the username
+    // Look for a user where the input matches either the email OR the username
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
