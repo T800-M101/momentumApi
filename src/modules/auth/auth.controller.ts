@@ -18,6 +18,7 @@ import { ApiRefresh } from './decorators/api-refresh.decorator';
 import { LoginDto } from './dtos/login.dto';
 import { ApiRegister } from './decorators/api-register.decorator';
 import { ApiLogin } from './decorators/api-login.decorator';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 
 @ApiTags('Autenticación')
 @Controller('auth')
@@ -36,20 +37,19 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @UseGuards(RtGuard) // Custom Guard used for 'jwt-refresh'
+  @UseGuards(RtGuard) 
   @Post('refresh')
   @ApiRefresh()
-  @ApiBearerAuth() // Show the padlock onSwagger
-  refresh(
-    @CurrentUserId() userId: string,
-    @CurrentUser('refreshToken') rt: string,
-  ) {
+  @ApiBearerAuth()
+  refresh( @CurrentUserId() userId: string, @CurrentUser('refreshToken') rt: string ) {
     return this.authService.refreshTokens(userId, rt);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: { userId: string }) {
-    return this.authService.logout(dto.userId);
+  @ApiBearerAuth()
+  async logout(@CurrentUserId() userId: string) {
+    return this.authService.logout(userId);
   }
 }

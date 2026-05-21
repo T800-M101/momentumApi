@@ -1,13 +1,12 @@
-import { 
-  Injectable, 
-  NotFoundException, 
-  ForbiddenException, 
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma-service';
 import { Prisma } from '@prisma/client';
 import { CreateEntryDto } from './dto/create-entry.dto';
 import { STOP_WORDS } from 'src/constants/stop-words';
-
 
 @Injectable()
 export class JournalService {
@@ -31,22 +30,22 @@ export class JournalService {
       })) || [];
 
     return this.prisma.entry.create({
-  data: {
-    title,
-    content,
-    date: new Date(date),
-    userId, 
-    moodId: moodId, 
+      data: {
+        title,
+        content,
+        date: new Date(date),
+        userId,
+        moodId: moodId,
 
-    tags: {
-      connectOrCreate: tagsUpdate,
-    },
-  },
-  include: {
-    mood: true,
-    tags: true,
-  },
-});
+        tags: {
+          connectOrCreate: tagsUpdate,
+        },
+      },
+      include: {
+        mood: true,
+        tags: true,
+      },
+    });
   }
 
   async findAll(userId: string) {
@@ -82,7 +81,9 @@ export class JournalService {
     }
 
     if (entry.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to view this entry.');
+      throw new ForbiddenException(
+        'You do not have permission to view this entry.',
+      );
     }
 
     return entry;
@@ -94,7 +95,7 @@ export class JournalService {
 
     return await this.prisma.entry.findMany({
       where: {
-        userId: userId, 
+        userId: userId,
         date: {
           gte: inicioDia,
           lte: finDia,
@@ -157,8 +158,8 @@ export class JournalService {
 
     return this.prisma.entry.findMany({
       where: {
-        userId: userId, 
-        OR: orConditions, 
+        userId: userId,
+        OR: orConditions,
       },
       include: {
         images: true,
@@ -174,14 +175,11 @@ export class JournalService {
   async update(id: string, updateEntryDto: CreateEntryDto, userId: string) {
     const { title, content, moodId, date, tags } = updateEntryDto;
 
-    await this.findOne(id, userId);
-
     const moodExists = await this.prisma.mood.findUnique({
       where: { id: moodId },
     });
-    if (!moodExists) {
+    if (!moodExists)
       throw new NotFoundException(`The Mood with ID ${moodId} does not exist.`);
-    }
 
     const tagsUpdate =
       tags?.map((tagName) => ({
@@ -189,38 +187,47 @@ export class JournalService {
         create: { name: tagName.toLowerCase().trim() },
       })) || [];
 
-    return this.prisma.entry.update({
-      where: { id },
-      data: {
-        title,
-        content,
-        date: new Date(date),
-        mood: {
-          connect: { id: moodId },
+    try {
+      return await this.prisma.entry.update({
+        where: {
+          id,
+          userId,
         },
-        tags: {
-          set: [],
-          connectOrCreate: tagsUpdate,
+        data: {
+          title,
+          content,
+          date: new Date(date),
+          mood: { connect: { id: moodId } },
+          tags: {
+            set: [],
+            connectOrCreate: tagsUpdate,
+          },
         },
-      },
-      include: {
-        mood: true,
-        tags: true,
-      },
-    });
+        include: { mood: true, tags: true },
+      });
+    } catch (error) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this entry or it does not exist.',
+      );
+    }
   }
 
-
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId);
-
-    await this.prisma.entry.delete({
-      where: { id },
-    });
-
-    return {
-      success: true,
-      message: `The journal entry with ID ${id} was removed successfully.`,
-    };
+    try {
+      await this.prisma.entry.delete({
+        where: {
+          id,
+          userId,
+        },
+      });
+      return {
+        success: true,
+        message: `The journal entry with ID ${id} was removed successfully.`,
+      };
+    } catch (error) {
+      throw new ForbiddenException(
+        'You do not have permission to remove this entry or it does not exist.',
+      );
+    }
   }
 }

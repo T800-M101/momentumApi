@@ -18,34 +18,42 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
+  async register(dto: RegisterDto) {
+    const emailExists = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (emailExists) {
+      throw new ConflictException('This email address is already in use.');
+    }
 
-async register(dto: RegisterDto) {
-  const emailExists = await this.prisma.user.findUnique({
-    where: { email: dto.email },
-  });
-  if (emailExists) {
-    throw new ConflictException('This email address is already in use.'); 
+    const usernameExists = await this.prisma.user.findUnique({
+      where: { username: dto.username },
+    });
+    if (usernameExists) {
+      throw new ConflictException('This username is already taken.');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        password: hashedPassword,
+        username: dto.username,
+      },
+    });
+
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refresh_token);
+
+    return {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      user: {
+        username: user.username,
+        email: user.email,
+      },
+    };
   }
-
-  const usernameExists = await this.prisma.user.findUnique({
-    where: { username: dto.username },
-  });
-  if (usernameExists) {
-    throw new ConflictException('This username is already taken.'); 
-  }
-
-  const hashedPassword = await bcrypt.hash(dto.password, 10);
-  const user = await this.prisma.user.create({
-    data: {
-      email: dto.email,
-      password: hashedPassword,
-      username: dto.username,
-    },
-  });
-
-  const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
-}
 
   async login(dto: LoginDto) {
     // Look for a user where the input matches either the email OR the username
@@ -72,9 +80,9 @@ async register(dto: RegisterDto) {
     await this.updateRtHash(user.id, tokens.refresh_token);
 
     return {
-      ...tokens,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
       user: {
-        id: user.id,
         username: user.username,
         email: user.email,
       },
