@@ -4,6 +4,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -14,11 +15,11 @@ import {
   CurrentUser,
   CurrentUserId,
 } from 'src/common/decorators/get-current-user.decorator';
-import { ApiRefresh } from './decorators/api-refresh.decorator';
 import { LoginDto } from './dtos/login.dto';
 import { ApiRegister } from './decorators/api-register.decorator';
 import { ApiLogin } from './decorators/api-login.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { Response } from 'express';
 
 @ApiTags('Autenticación')
 @Controller('auth')
@@ -33,16 +34,46 @@ export class AuthController {
 
   @Post('login')
   @ApiLogin()
-  login(@Body() dto: LoginDto): any {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<any> {
+    const result = await this.authService.login(dto);
+
+    res.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax', // It allows crossing from port 3000 to 4200 without problems
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    return {
+      access_token: result.access_token,
+      user: result.user,
+    };
   }
 
-  @UseGuards(RtGuard) 
+  @UseGuards(RtGuard)
   @Post('refresh')
-  @ApiRefresh()
-  @ApiBearerAuth()
-  refresh( @CurrentUserId() userId: string, @CurrentUser('refreshToken') rt: string ) {
-    return this.authService.refreshTokens(userId, rt);
+  async refresh(
+    @CurrentUserId() userId: string,
+    @CurrentUser('refreshToken') rt: string,
+    @Res({ passthrough: true }) res: Response, // 👈 También aquí
+  ): Promise<any> {
+    const tokens = await this.authService.refreshTokens(userId, rt);
+
+    res.cookie('refreshToken', tokens.refresh_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    return {
+      access_token: tokens.access_token,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
