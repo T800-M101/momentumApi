@@ -1,21 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { MoodRepository } from './mood.repository';
 import { CreateMoodDto } from './dto/create-mood.dto';
 import { UpdateMoodDto } from './dto/update-mood.dto';
-import { PrismaService } from 'src/prisma/prisma-service';
 
 @Injectable()
 export class MoodService {
-
-  constructor(private prisma: PrismaService) {}
+  
+  constructor(private readonly moodRepo: MoodRepository) {}
 
   create(createMoodDto: CreateMoodDto) {
     return 'This action adds a new mood';
   }
 
-  findAll() {
-    return this.prisma.mood.findMany({
-      orderBy: { id: 'asc' }
-    });
+  async findAll() {
+    return this.moodRepo.findAll();
   }
 
   findOne(id: number) {

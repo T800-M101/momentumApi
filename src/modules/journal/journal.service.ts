@@ -3,22 +3,19 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma-service';
-import { Prisma } from '@prisma/client';
+import { JournalRepository } from './journal.repository';
 import { CreateEntryDto } from './dto/create-entry.dto';
+import { Prisma } from '@prisma/client';
 import { STOP_WORDS } from 'src/constants/stop-words';
 
 @Injectable()
 export class JournalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly journalRepo: JournalRepository) {}
 
   async create(createEntryDto: CreateEntryDto, userId: string) {
-    const { title, content, moodId, date, tags } = createEntryDto;
+    const { moodId, tags } = createEntryDto;
 
-    const moodExists = await this.prisma.mood.findUnique({
-      where: { id: moodId },
-    });
-
+    const moodExists = await this.journalRepo.checkMoodExists(moodId);
     if (!moodExists) {
       throw new NotFoundException(`El Mood con ID ${moodId} no existe.`);
     }
@@ -29,50 +26,15 @@ export class JournalService {
         create: { name: tagName.toLowerCase().trim() },
       })) || [];
 
-    return this.prisma.entry.create({
-      data: {
-        title,
-        content,
-        date: new Date(date),
-        userId,
-        moodId: moodId,
-
-        tags: {
-          connectOrCreate: tagsUpdate,
-        },
-      },
-      include: {
-        mood: true,
-        tags: true,
-      },
-    });
+    return this.journalRepo.create(createEntryDto, userId, tagsUpdate);
   }
 
   async findAll(userId: string) {
-    return this.prisma.entry.findMany({
-      where: {
-        userId: userId, // 🔒 Filtro maestro
-      },
-      take: 30,
-      include: {
-        images: true,
-        tags: true,
-        mood: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return this.journalRepo.findAll(userId);
   }
 
   async findOne(id: string, userId: string) {
-    const entry = await this.prisma.entry.findUnique({
-      where: { id },
-      include: {
-        mood: true,
-        tags: true,
-      },
-    });
+    const entry = await this.journalRepo.findById(id);
 
     if (!entry) {
       throw new NotFoundException(
@@ -93,22 +55,7 @@ export class JournalService {
     const inicioDia = new Date(`${dateString}T00:00:00.000Z`);
     const finDia = new Date(`${dateString}T23:59:59.999Z`);
 
-    return await this.prisma.entry.findMany({
-      where: {
-        userId: userId,
-        date: {
-          gte: inicioDia,
-          lte: finDia,
-        },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      include: {
-        mood: true,
-        tags: true,
-      },
-    });
+    return this.journalRepo.findByDateRange(userId, inicioDia, finDia);
   }
 
   async findByKeyword(search: string, userId: string) {
@@ -135,9 +82,7 @@ export class JournalService {
         if (tagName.length > 0) {
           orConditions.push({
             tags: {
-              some: {
-                name: { equals: tagName, mode: 'insensitive' },
-              },
+              some: { name: { equals: tagName, mode: 'insensitive' } },
             },
           });
         }
@@ -147,39 +92,23 @@ export class JournalService {
           { content: { contains: term, mode: 'insensitive' } },
           {
             tags: {
-              some: {
-                name: { contains: term, mode: 'insensitive' },
-              },
+              some: { name: { contains: term, mode: 'insensitive' } },
             },
           },
         );
       }
     }
 
-    return this.prisma.entry.findMany({
-      where: {
-        userId: userId,
-        OR: orConditions,
-      },
-      include: {
-        images: true,
-        mood: true,
-        tags: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return this.journalRepo.findByConditions(userId, orConditions);
   }
 
   async update(id: string, updateEntryDto: CreateEntryDto, userId: string) {
-    const { title, content, moodId, date, tags } = updateEntryDto;
+    const { moodId, tags } = updateEntryDto;
 
-    const moodExists = await this.prisma.mood.findUnique({
-      where: { id: moodId },
-    });
-    if (!moodExists)
+    const moodExists = await this.journalRepo.checkMoodExists(moodId);
+    if (!moodExists) {
       throw new NotFoundException(`The Mood with ID ${moodId} does not exist.`);
+    }
 
     const tagsUpdate =
       tags?.map((tagName) => ({
@@ -188,23 +117,12 @@ export class JournalService {
       })) || [];
 
     try {
-      return await this.prisma.entry.update({
-        where: {
-          id,
-          userId,
-        },
-        data: {
-          title,
-          content,
-          date: new Date(date),
-          mood: { connect: { id: moodId } },
-          tags: {
-            set: [],
-            connectOrCreate: tagsUpdate,
-          },
-        },
-        include: { mood: true, tags: true },
-      });
+      return await this.journalRepo.update(
+        id,
+        userId,
+        updateEntryDto,
+        tagsUpdate,
+      );
     } catch (error) {
       throw new ForbiddenException(
         'You do not have permission to modify this entry or it does not exist.',
@@ -214,12 +132,7 @@ export class JournalService {
 
   async remove(id: string, userId: string) {
     try {
-      await this.prisma.entry.delete({
-        where: {
-          id,
-          userId,
-        },
-      });
+      await this.journalRepo.remove(id, userId);
       return {
         success: true,
         message: `The journal entry with ID ${id} was removed successfully.`,
@@ -228,6 +141,21 @@ export class JournalService {
       throw new ForbiddenException(
         'You do not have permission to remove this entry or it does not exist.',
       );
+    }
+  }
+
+  async getUserStats(userId: string) {
+    try {
+      const totalEntries = await this.journalRepo.countEntries(userId);
+      const currentStreak = await this.journalRepo.getCurrentStreak(userId);
+
+      return {
+        totalEntries,
+        currentStreak,
+      };
+    } catch (error) {
+      console.error('Failed to compute user statistics:', error);
+      return { totalEntries: 0, currentStreak: 0 };
     }
   }
 }

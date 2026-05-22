@@ -11,6 +11,8 @@ import {
   BadRequestException,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus
 } from '@nestjs/common';
 import { JournalService } from './journal.service';
 import { CreateEntryDto } from './dto/create-entry.dto';
@@ -21,6 +23,13 @@ import { CurrentUserId } from 'src/common/decorators/get-current-user.decorator'
 @Controller('journal')
 export class JournalController {
   constructor(private readonly journalService: JournalService) {}
+
+  @Get('stats')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async getUserStats(@CurrentUserId() userId: string) {
+    return await this.journalService.getUserStats(userId);
+  }
 
   @Post()
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
