@@ -9,7 +9,7 @@ async function bootstrap() {
   app.use(cookieParser());
   
  app.enableCors({
-    origin: ['http://localhost:4200', 'https://momentumapi-btcm.onrender.com'], 
+    origin: ['http://localhost:4200', 'https://journal-momentum.netlify.app/login'], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
