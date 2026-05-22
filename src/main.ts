@@ -8,8 +8,8 @@ async function bootstrap() {
 
   app.use(cookieParser());
   
-  app.enableCors({
-    origin: 'http://localhost:4200', 
+ app.enableCors({
+    origin: ['http://localhost:4200', 'https://momentumapi-btcm.onrender.com'], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -21,9 +21,10 @@ async function bootstrap() {
     .addBearerAuth() 
     .build();
     
-    const document: OpenAPIObject = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+  const document: OpenAPIObject = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
   
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();
