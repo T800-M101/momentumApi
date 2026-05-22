@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma-service'; // Ajusta la ruta a tu PrismaService
+import { PrismaService } from '../../prisma/prisma-service'; 
 import { CreateMoodDto } from './dto/create-mood.dto';
 import { UpdateMoodDto } from './dto/update-mood.dto';
 

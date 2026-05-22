@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { MoodRepository } from './mood.repository';
 import { CreateMoodDto } from './dto/create-mood.dto';
 import { UpdateMoodDto } from './dto/update-mood.dto';
@@ -16,8 +16,12 @@ export class MoodService {
     return this.moodRepo.findAll();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} mood`;
+  async findOne(id: number) {
+    const mood = await this.moodRepo.findOne(id);
+    if (!mood) {
+      throw new NotFoundException(`El Mood con ID #${id} no existe.`);
+    }
+    return mood; 
   }
 
   update(id: number, updateMoodDto: UpdateMoodDto) {
