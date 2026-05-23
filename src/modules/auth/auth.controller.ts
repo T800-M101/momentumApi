@@ -1,4 +1,12 @@
-import { Body, Controller, HttpException, HttpStatus, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpException,
+  HttpStatus,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
@@ -17,7 +25,6 @@ import {
   ApiLogout,
 } from './decorators/api-auth.decorators';
 
-import { createClient } from '@supabase/supabase-js';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -94,25 +101,43 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
-@Post('forgot-password')
+  @Post('forgot-password')
   async forgotPassword(@Body('email') email: string) {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new HttpException('Configuración de Supabase faltante', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    console.log('Initiating recovery via REST API:', email);
 
-    const supabaseServiceRole = createClient(
-      process.env.SUPABASE_URL, 
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    
-    const { error } = await supabaseServiceRole.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL}/update-password`,
-    });
+    try {
+      const response = await fetch(
+        `${process.env.SUPABASE_URL}/auth/v1/recover`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+            redirect_to: `${process.env.FRONTEND_URL}/update-password`,
+          }),
+        },
+      );
 
-    if (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      const result = await response.json();
+      console.log("Supabase's response:", result);
+
+      if (!response.ok) {
+        throw new HttpException(
+          result.message || 'Error sending email',
+          response.status,
+        );
+      }
+
+      return { message: 'Recovery email sent' };
+    } catch (error: any) {
+      console.error('Critical error in the recovery service:', error);
+      throw new HttpException(
+        'Unable to connect to the authentication service',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-    
-    return { message: 'Correo de recuperación enviado' };
   }
 }
