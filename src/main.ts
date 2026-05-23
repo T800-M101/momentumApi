@@ -12,6 +12,7 @@ async function bootstrap() {
     origin: ['http://localhost:4200', 'https://journal-momentum.netlify.app'], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
   });
 
   const config = new DocumentBuilder()
