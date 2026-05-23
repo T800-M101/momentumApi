@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpException, HttpStatus, Post, Res, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
@@ -10,14 +10,14 @@ import {
 import { LoginDto } from './dtos/login.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { Response } from 'express';
-
-// 🚀 Import our freshly engineered decorators
 import {
   ApiRegister,
   ApiLogin,
   ApiRefreshSession,
   ApiLogout,
 } from './decorators/api-auth.decorators';
+
+import { createClient } from '@supabase/supabase-js';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -92,5 +92,27 @@ export class AuthController {
     });
 
     return { message: 'Logged out successfully' };
+  }
+
+@Post('forgot-password')
+  async forgotPassword(@Body('email') email: string) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new HttpException('Configuración de Supabase faltante', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const supabaseServiceRole = createClient(
+      process.env.SUPABASE_URL, 
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    
+    const { error } = await supabaseServiceRole.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.FRONTEND_URL}/update-password`,
+    });
+
+    if (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+    
+    return { message: 'Correo de recuperación enviado' };
   }
 }
