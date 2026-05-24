@@ -1,8 +1,8 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, StrategyOptionsWithRequest } from 'passport-jwt'; 
+import { Strategy } from 'passport-jwt';
 import { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
@@ -13,26 +13,24 @@ export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
       throw new Error('JWT_REFRESH_SECRET must be defined in .env');
     }
 
-    const strategyOptions: StrategyOptionsWithRequest = {
+    super({
       jwtFromRequest: (req: Request) => {
         let token = null;
-        if (req && req.cookies) {
-          token = req.cookies['refreshToken'];
+        if (req && (req.body.refreshToken || req.headers['x-refresh-token'])) {
+          token = req.body.refreshToken || req.headers['x-refresh-token'];
         }
         return token;
       },
       secretOrKey: refreshSecret,
-      passReqToCallback: true, 
-    };
-
-    super(strategyOptions);
+      passReqToCallback: true,
+    });
   }
 
   validate(req: Request, payload: any) {
-    const refreshToken = req.cookies['refreshToken'];
+    const refreshToken = req.body.refreshToken || req.headers['x-refresh-token'];
 
     if (!refreshToken) {
-      throw new ForbiddenException('Refresh token missing in cookies');
+      throw new ForbiddenException('Refresh token missing');
     }
 
     return {

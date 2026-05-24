@@ -4,27 +4,21 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
-import { RtGuard } from 'src/common/guards/rt.guard';
-import {
-  CurrentUser,
-  CurrentUserId,
-} from 'src/common/decorators/get-current-user.decorator';
 import { LoginDto } from './dtos/login.dto';
+import { RtGuard } from 'src/common/guards/rt.guard';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { Response } from 'express';
+import { CurrentUserId } from 'src/common/decorators/get-current-user.decorator';
 import {
   ApiRegister,
   ApiLogin,
   ApiRefreshSession,
   ApiLogout,
 } from './decorators/api-auth.decorators';
-
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -39,24 +33,9 @@ export class AuthController {
 
   @Post('login')
   @ApiLogin()
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<any> {
-    const result = await this.authService.login(dto);
-
-    res.cookie('refreshToken', result.refresh_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-
-    return {
-      access_token: result.access_token,
-      user: result.user,
-    };
+  async login(@Body() dto: LoginDto) {
+    console.log('LOGIN')
+    return await this.authService.login(dto);
   }
 
   @UseGuards(RtGuard)
@@ -64,40 +43,16 @@ export class AuthController {
   @ApiRefreshSession()
   async refresh(
     @CurrentUserId() userId: string,
-    @CurrentUser('refreshToken') rt: string,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<any> {
-    const tokens = await this.authService.refreshTokens(userId, rt);
-
-    res.cookie('refreshToken', tokens.refresh_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-
-    return {
-      access_token: tokens.access_token,
-    };
+    @Body('refreshToken') rt: string
+  ) {
+    return await this.authService.refreshTokens(userId, rt);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @ApiLogout()
-  async logout(
-    @CurrentUserId() userId: string,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async logout(@CurrentUserId() userId: string) {
     await this.authService.logout(userId);
-
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-    });
-
     return { message: 'Logged out successfully' };
   }
 
@@ -122,8 +77,7 @@ export class AuthController {
       );
 
       const result = await response.json();
-      console.log("Supabase's response:", result);
-
+      
       if (!response.ok) {
         throw new HttpException(
           result.message || 'Error sending email',
