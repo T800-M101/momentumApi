@@ -7,24 +7,24 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser());
-  
- app.enableCors({
-    origin: '*', 
+
+  app.enableCors({
+    origin: ['http://localhost:4200', 'https://journal-momentum.netlify.app'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
-    credentials: false
+    credentials: false,
   });
 
   const config = new DocumentBuilder()
     .setTitle('Journal API')
     .setDescription('Official documentation of Journal App')
     .setVersion('1.0')
-    .addBearerAuth() 
+    .addBearerAuth()
     .build();
-    
+
   const document: OpenAPIObject = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
-  
+
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
 }
