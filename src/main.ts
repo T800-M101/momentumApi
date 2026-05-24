@@ -11,12 +11,13 @@ async function bootstrap() {
  app.enableCors({
     origin: ['http://localhost:4200', 'https://journal-momentum.netlify.app'], 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Authorization',
     credentials: false
   });
 
   const config = new DocumentBuilder()
     .setTitle('Journal API')
-    .setDescription('Documentación oficial del Diario Digital')
+    .setDescription('Official documentation of Journal App')
     .setVersion('1.0')
     .addBearerAuth() 
     .build();
